@@ -1,48 +1,52 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { Box, Button, Container, TextField, Typography } from '@mui/material'
+import { useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Box, Button, Container, TextField, Typography } from "@mui/material";
 
 export default function ResetPasswordPage() {
-  const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  }
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setMessage('')
+    e.preventDefault();
+    setError("");
+    setMessage("");
 
     if (!validateEmail(email)) {
-      setError('Please enter a valid email')
-      return
+      setError("Please enter a valid email");
+      return;
     }
 
-    setLoading(true)
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
-
-    setLoading(false)
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: "http://localhost:3000/auth/update-password", // АБО твоя продакшн-URL
+    });
+    setLoading(false);
 
     if (error) {
-      setError(error.message)
+      setError(error.message);
     } else {
-      setSubmitted(true)
-      setMessage('Password reset email has been sent. Please check your inbox.')
+      setSubmitted(true);
+      setMessage(
+        "Password reset email has been sent. Please check your inbox."
+      );
     }
-  }
+  };
 
   return (
     <Container maxWidth="xs">
       <Box mt={10}>
-        <Typography variant="h5" gutterBottom>Reset Password</Typography>
+        <Typography variant="h5" gutterBottom>
+          Reset Password
+        </Typography>
 
         {!submitted ? (
           <form onSubmit={handleSubmit}>
@@ -56,7 +60,11 @@ export default function ResetPasswordPage() {
               disabled={loading}
               autoComplete="email"
             />
-            {error && <Typography color="error" mt={1}>{error}</Typography>}
+            {error && (
+              <Typography color="error" mt={1}>
+                {error}
+              </Typography>
+            )}
             <Box mt={2}>
               <Button
                 type="submit"
@@ -64,7 +72,7 @@ export default function ResetPasswordPage() {
                 disabled={loading}
                 fullWidth
               >
-                {loading ? 'Sending...' : 'Send Reset Email'}
+                {loading ? "Sending..." : "Send Reset Email"}
               </Button>
             </Box>
           </form>
@@ -75,5 +83,5 @@ export default function ResetPasswordPage() {
         )}
       </Box>
     </Container>
-  )
+  );
 }

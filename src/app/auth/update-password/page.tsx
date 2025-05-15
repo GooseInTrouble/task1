@@ -1,47 +1,47 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
-import { Box, Button, Container, TextField, Typography } from '@mui/material'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import { Box, Button, Container, TextField, Typography } from "@mui/material";
 
 export default function UpdatePasswordPage() {
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [message, setMessage] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setMessage('')
+    e.preventDefault();
+    setError("");
+    setMessage("");
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
+      setError("Password must be at least 6 characters");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({ password })
+    const { error } = await supabase.auth.updateUser({ password });
 
-    setLoading(false)
+    setLoading(false);
 
     if (error) {
-      setError(error.message)
+      setError(error.message);
     } else {
-      setMessage('Your password has been updated successfully.')
-      setTimeout(() => {
-        router.push('auth/update-password') 
-      }, 2500)
+      setMessage("Your password has been updated successfully.");
+      router.push("/auth/login");
     }
-  }
+  };
 
   return (
     <Container maxWidth="xs">
       <Box mt={10}>
-        <Typography variant="h5" gutterBottom>Set New Password</Typography>
+        <Typography variant="h5" gutterBottom>
+          Set New Password
+        </Typography>
         {message ? (
           <Typography color="primary">{message}</Typography>
         ) : (
@@ -63,12 +63,12 @@ export default function UpdatePasswordPage() {
                 fullWidth
                 disabled={loading}
               >
-                {loading ? 'Updating...' : 'Update Password'}
+                {loading ? "Updating..." : "Update Password"}
               </Button>
             </Box>
           </form>
         )}
       </Box>
     </Container>
-  )
+  );
 }

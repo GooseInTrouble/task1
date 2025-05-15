@@ -1,57 +1,82 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
-import { Box, Button, Container, TextField, Typography, Link } from '@mui/material'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import {
+  Box,
+  Button,
+  Container,
+  TextField,
+  Typography,
+  Link,
+} from "@mui/material";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const validateEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  }
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  // Автоматичний редірект, якщо сесія вже є
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        router.push("/dashboard");
+      }
+    });
+  }, [router]);
 
   const handleLogin = async () => {
-    setError('')
+    setError("");
 
     if (!validateEmail(email)) {
-      setError('Please enter a valid email')
-      return
+      setError("Please enter a valid email");
+      return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long')
-      return
+      setError("Password must be at least 6 characters long");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
-    const { error: supabaseError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: supabaseError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    setLoading(false)
+    setLoading(false);
 
     if (supabaseError) {
-      if (supabaseError.message.includes('Invalid login credentials')) {
-        setError('Incorrect email or password')
-      } else if (supabaseError.message.includes('User not found')) {
-        setError('No user found with this email')
+      if (supabaseError.message.includes("Invalid login credentials")) {
+        setError("Incorrect email or password");
+      } else if (supabaseError.message.includes("User not found")) {
+        setError("No user found with this email");
       } else {
-        setError(supabaseError.message)
+        setError(supabaseError.message);
       }
-    } else {
-      router.push('/dashboard')
+    } else if (data.session) {
+      // Затримка, щоб сесія усталилась на сервері (middleware)
+      setTimeout(() => {
+        router.push("/dashboard");
+      }, 500);
     }
-  }
+  };
 
   return (
     <Container maxWidth="xs">
       <Box mt={10}>
-        <Typography variant="h5" gutterBottom>Login</Typography>
+        <Typography variant="h5" gutterBottom>
+          Login
+        </Typography>
         <TextField
           label="Email"
           fullWidth
@@ -71,7 +96,11 @@ export default function LoginPage() {
           disabled={loading}
           autoComplete="current-password"
         />
-        {error && <Typography color="error" mt={1}>{error}</Typography>}
+        {error && (
+          <Typography color="error" mt={1}>
+            {error}
+          </Typography>
+        )}
         <Box mt={2}>
           <Button
             variant="contained"
@@ -79,7 +108,7 @@ export default function LoginPage() {
             disabled={loading}
             fullWidth
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </Button>
         </Box>
         <Box mt={1} textAlign="right">
@@ -89,10 +118,13 @@ export default function LoginPage() {
         </Box>
         <Box mt={2}>
           <Typography>
-            Don't have an account? <Link href="/auth/register" underline="hover">Register here</Link>
+            Don't have an account?{" "}
+            <Link href="/auth/register" underline="hover">
+              Register here
+            </Link>
           </Typography>
         </Box>
       </Box>
     </Container>
-  )
+  );
 }
