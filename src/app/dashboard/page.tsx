@@ -86,29 +86,16 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      {/* AppBar */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" p={2} bgcolor="#1976d2" color="white">
-        <Typography variant="h6">MyApp</Typography>
-        <Box>
-          <Button color="inherit" href="/">Головна</Button>
-          <IconButton onClick={handleLogout} color="inherit" title="Вийти">
-            <LogoutIcon />
-          </IconButton>
-        </Box>
-      </Box>
-
-      {/* Додати фото */}
       <Box p={2}>
         <Button
           variant="contained"
           startIcon={<AddPhotoAlternateIcon />}
           onClick={() => setOpen(true)}
         >
-          Додати фото
+          Add photo
         </Button>
       </Box>
 
-      {/* Grid фото */}
       <Box p={2}>
         {photos.length > 0 ? (
           <ImageList cols={3} gap={12}>
@@ -124,18 +111,17 @@ export default function DashboardPage() {
             ))}
           </ImageList>
         ) : (
-          <Typography>У вас ще немає фото.</Typography>
+          <Typography>You dont have a photo.</Typography>
         )}
       </Box>
 
-      {/* Модалка */}
       <Dialog open={open} onClose={() => setOpen(false)}>
-        <DialogTitle>Завантажити фото</DialogTitle>
+        <DialogTitle>Upload photo</DialogTitle>
         <DialogContent>
           <input type="file" accept="image/*" multiple onChange={handleFileChange} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Скасувати</Button>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </Box>
