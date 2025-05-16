@@ -1,21 +1,19 @@
-// app/tasks/page.tsx
-"use client";
 "use client";
 
 import { useEffect, useState } from "react";
-import Grid from "@mui/material/Grid";
 import {
   Typography,
   Button,
   Dialog,
   DialogTitle,
   DialogContent,
-  TextField,
   DialogActions,
   Select,
   MenuItem,
   Card,
   CardContent,
+  Box,
+  TextField,
 } from "@mui/material";
 import {
   DndContext,
@@ -23,22 +21,17 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragOverlay,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { supabase } from "@/lib/supabaseClient";
 import { v4 as uuidv4 } from "uuid";
-type Task = {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string;
-  status: "todo" | "in_progress" | "done";
-  created_at: string;
-};
+import SortableTaskItem from "@/app/components/SortableTaskItem";
+import { Task } from "./types";
 
 const statusLabels = {
   todo: "To Do",
@@ -49,15 +42,16 @@ const statusLabels = {
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [open, setOpen] = useState(false);
-const [form, setForm] = useState<{
-  title: string;
-  description: string;
-  status: "todo" | "in_progress" | "done";
-}>({
-  title: "",
-  description: "",
-  status: "todo",
-})
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    status: "todo" as "todo" | "in_progress" | "done",
+  });
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
   const sensors = useSensors(useSensor(PointerSensor));
 
   const fetchTasks = async () => {
@@ -65,43 +59,27 @@ const [form, setForm] = useState<{
       .from("tasks")
       .select("*")
       .order("created_at", { ascending: false });
-    if (!error) setTasks(data);
+    if (!error && data) {
+      setTasks(data);
+    }
   };
 
   useEffect(() => {
     fetchTasks();
   }, []);
 
-  const handleDragEnd = async (event: any) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const updated = tasks.map((t) =>
-      t.id === active.id ? { ...t, status: over.id } : t
-    );
-    setTasks(updated);
-
-    await supabase
-      .from("tasks")
-      .update({ status: over.id })
-      .eq("id", active.id);
-  };
-
   const handleAddTask = async () => {
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) return;
 
-    const newTask: Omit<Task, "id" | "created_at"> = {
-      ...form,
-      user_id: user.id,
-    };
-
     const { error } = await supabase.from("tasks").insert([
       {
-        ...newTask,
+        ...form,
         id: uuidv4(),
+        user_id: user.id,
       },
     ]);
+
     if (!error) {
       setOpen(false);
       setForm({ title: "", description: "", status: "todo" });
@@ -109,8 +87,35 @@ const [form, setForm] = useState<{
     }
   };
 
+  const handleDragStart = (event: any) => {
+    const task = tasks.find((t) => t.id === event.active.id);
+    if (task) setActiveTask(task);
+  };
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    setActiveTask(null);
+
+    if (!over || active.id === over.id) return;
+
+    const updatedTasks = tasks.map((t) =>
+      t.id === active.id ? { ...t, status: over.id } : t
+    );
+    setTasks(updatedTasks);
+
+    await supabase
+      .from("tasks")
+      .update({ status: over.id })
+      .eq("id", active.id);
+  };
+
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task);
+    setDetailOpen(true);
+  };
+
   return (
-    <div className="p-4">
+    <div style={{ padding: 16 }}>
       <Typography variant="h4" gutterBottom>
         Task Manager
       </Typography>
@@ -118,46 +123,60 @@ const [form, setForm] = useState<{
       <Button variant="contained" onClick={() => setOpen(true)}>
         Add Task
       </Button>
-      <Grid container spacing={2} className="mt-4">
-        {Object.entries(statusLabels).map(([status, label]) => (
-          <Grid key={status}>
-            <Typography variant="h6" gutterBottom>
-              {label}
-            </Typography>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={tasks
-                  .filter((t) => t.status === status)
-                  .map((t) => t.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {tasks
-                  .filter((t) => t.status === status)
-                  .map((task) => (
-                    <Card key={task.id} className="mb-2">
-                      <CardContent>
-                        <Typography variant="subtitle1">
-                          {task.title}
-                        </Typography>
-                        <Typography variant="body2">
-                          {task.description}
-                        </Typography>
-                      </CardContent>
-                    </Card>
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            marginTop: 16,
+            height: "80vh",
+          }}
+        >
+          {Object.entries(statusLabels).map(([status, label]) => {
+            const columnTasks = tasks.filter((t) => t.status === status);
+            return (
+              <TaskColumn key={status} status={status} label={label}>
+                <SortableContext
+                  items={columnTasks.map((t) => t.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {columnTasks.map((task) => (
+                    <SortableTaskItem
+                      key={task.id}
+                      task={task}
+                      containerId={status}
+                      onClick={() => handleTaskClick(task)} // додано
+                    />
                   ))}
-              </SortableContext>
-            </DndContext>
-          </Grid>
-        ))}
-      </Grid>
+                </SortableContext>
+              </TaskColumn>
+            );
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeTask && (
+            <Card sx={{ width: 250, backgroundColor: "#e3f2fd" }}>
+              <CardContent>
+                <Typography variant="subtitle1">{activeTask.title}</Typography>
+                <Typography variant="body2">{activeTask.description}</Typography>
+              </CardContent>
+            </Card>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>Add New Task</DialogTitle>
-        <DialogContent className="flex flex-col gap-2 mt-2">
+        <DialogContent
+          sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}
+        >
           <TextField
             label="Title"
             value={form.title}
@@ -172,13 +191,16 @@ const [form, setForm] = useState<{
             multiline
             rows={3}
           />
-<Select
-  value={form.status}
-  onChange={(e) =>
-    setForm({ ...form, status: e.target.value as "todo" | "in_progress" | "done" })
-  }
-  fullWidth
->
+          <Select
+            value={form.status}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                status: e.target.value as "todo" | "in_progress" | "done",
+              })
+            }
+            fullWidth
+          >
             <MenuItem value="todo">To Do</MenuItem>
             <MenuItem value="in_progress">In Progress</MenuItem>
             <MenuItem value="done">Done</MenuItem>
@@ -191,6 +213,65 @@ const [form, setForm] = useState<{
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Task Details</DialogTitle>
+        <DialogContent dividers>
+          {selectedTask ? (
+            <>
+              <Typography variant="h6" gutterBottom>
+                {selectedTask.title}
+              </Typography>
+              <Typography variant="body1" gutterBottom>
+                {selectedTask.description || "No description"}
+              </Typography>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Status: {statusLabels[selectedTask.status]}
+              </Typography>
+            </>
+          ) : (
+            <Typography>Loading...</Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </div>
+  );
+}
+
+function TaskColumn({
+  status,
+  label,
+  children,
+}: {
+  status: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: status,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        backgroundColor: isOver ? "#bbdefb" : "#fff",
+        boxShadow: "0 0 8px rgba(0,0,0,0.1)",
+        borderRadius: 4,
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        flex: 1,
+      }}
+    >
+      <Typography variant="h6" gutterBottom>
+        {label}
+      </Typography>
+      <Box sx={{ overflowY: "auto", flex: 1 }}>{children}</Box>
     </div>
   );
 }

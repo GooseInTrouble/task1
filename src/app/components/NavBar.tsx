@@ -45,10 +45,26 @@ export default function NavBar() {
             <Button color="inherit">Home</Button>
           </Link>
         </Box>
+
         {user && (
-          <Button color="inherit" onClick={handleLogout}>
-            Log Out
-          </Button>
+          <>
+            <Box sx={{ mr: 2 }}>
+              <Link href="/tasks" style={{ color: "inherit", textDecoration: "none" }}>
+                <Button color="inherit">Tasks</Button>
+              </Link>
+            </Box>
+            <Button color="inherit" onClick={handleLogout}>
+              Log Out
+            </Button>
+          </>
+        )}
+
+        {!user && (
+          <Box sx={{ mr: 2 }}>
+            <Link href="/auth/login" style={{ color: "inherit", textDecoration: "none" }}>
+              <Button color="inherit">Log In</Button>
+            </Link>
+          </Box>
         )}
       </Toolbar>
     </AppBar>
